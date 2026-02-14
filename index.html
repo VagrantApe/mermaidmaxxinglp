@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mermaid Maxxing - Markdown to Mermaid Charts</title>
+    <meta name="description" content="Convert markdown to beautiful Mermaid charts instantly. Edit in place, customize, and embed anywhere.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        :root {
+            --bg: #09090b;
+            --bg-raised: #111113;
+            --bg-card: rgba(255,255,255,0.03);
+            --border: rgba(255,255,255,0.06);
+            --border-hover: rgba(255,255,255,0.12);
+            --text: #fafafa;
+            --text-muted: #a1a1aa;
+            --text-dim: #71717a;
+            --accent: #c9a84c;
+            --accent-dim: rgba(201,168,76,0.15);
+            --cyan: #22d3ee;
+            --cyan-dim: rgba(34,211,238,0.1);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 400;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+        a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+        a:hover { color: var(--cyan); }
+
+        .container { max-width: 1080px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* ═══════ NAV ═══════ */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 2rem; height: 56px;
+            background: rgba(9,9,11,0.8);
+            backdrop-filter: blur(12px) saturate(1.4);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-logo {
+            font-weight: 700; font-size: 1rem; color: var(--text);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .nav-logo .logo-icon {
+            width: 20px; height: 20px;
+            background: linear-gradient(135deg, var(--accent), var(--cyan));
+            border-radius: 4px;
+        }
+        .nav-links { display: flex; gap: 1.25rem; list-style: none; }
+        .nav-links a {
+            font-size: 0.82rem; font-weight: 500; color: var(--text-muted);
+            transition: color 0.15s;
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-cta {
+            font-size: 0.8rem; font-weight: 600; color: var(--bg);
+            background: var(--accent); padding: 0.35rem 0.85rem;
+            border-radius: 6px; border: none; cursor: pointer;
+            transition: transform 0.15s, filter 0.15s;
+        }
+        .nav-cta:hover { transform: scale(1.02); filter: brightness(1.1); color: var(--bg); }
+
+        /* ═══════ HERO ═══════ */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 7rem 1.5rem 3rem;
+            overflow: hidden;
+        }
+        /* Dot grid background */
+        .hero::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 20%, transparent 70%);
+            pointer-events: none;
+        }
+        /* Gradient orbs */
+        .hero-orb {
+            position: absolute; border-radius: 50%; filter: blur(100px); pointer-events: none;
+        }
+        .hero-orb-1 {
+            width: 500px; height: 500px; top: -10%; left: -5%;
+            background: rgba(201,168,76,0.08);
+        }
+        .hero-orb-2 {
+            width: 400px; height: 400px; bottom: 10%; right: -5%;
+            background: rgba(34,211,238,0.06);
+        }
+        /* Faint background flowchart */
+        .hero-bg-chart {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-20deg);
+            width: 1200px; height: 900px;
+            opacity: 0.1;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero-bg-chart svg {
+            width: 100%; height: 100%;
+        }
+
+        .hero-content {
+            position: relative; z-index: 2;
+            display: flex; align-items: center; justify-content: center;
+            gap: 0; max-width: 1100px; width: 100%;
+        }
+
+        /* Mermaid images */
+        .mermaid-img { flex-shrink: 0; position: relative; }
+        .mermaid-img img {
+            display: block; width: 100%; height: auto;
+            filter: drop-shadow(0 0 40px rgba(201,168,76,0.1));
+        }
+        .mermaid-left {
+            width: 300px; margin-right: -30px; z-index: 2;
+        }
+        .mermaid-left img {
+            mask-image: radial-gradient(ellipse 72% 62% at center, black 35%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 72% 62% at center, black 35%, transparent 70%);
+        }
+        .mermaid-right {
+            width: 300px; margin-left: -30px; z-index: 2;
+        }
+        .mermaid-right img {
+            mask-image: radial-gradient(ellipse 72% 62% at center, black 35%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 72% 62% at center, black 35%, transparent 70%);
+        }
+
+        /* Center panel */
+        .hero-center {
+            text-align: center;
+            flex: 0 1 460px; z-index: 5;
+            padding: 2.5rem 2rem;
+            background: rgba(17,17,19,0.7);
+            backdrop-filter: blur(16px) saturate(1.3);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            font-size: 0.72rem; font-weight: 600;
+            color: var(--accent); background: var(--accent-dim);
+            padding: 0.25rem 0.65rem; border-radius: 20px;
+            margin-bottom: 1rem; letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border: 1px solid rgba(201,168,76,0.15);
+        }
+        .badge-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-size: 2.75rem; font-weight: 700;
+            line-height: 1.1; margin-bottom: 0.6rem;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--cyan) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero .tagline {
+            font-size: 1rem; color: var(--text-muted);
+            margin-bottom: 1.5rem; line-height: 1.55;
+        }
+
+        .signup-form {
+            display: flex; gap: 0.5rem;
+        }
+        .signup-form input[type="email"] {
+            flex: 1; padding: 0.6rem 0.85rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text); font-family: inherit; font-size: 0.88rem;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .signup-form input[type="email"]::placeholder { color: var(--text-dim); }
+        .signup-form input[type="email"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+        .signup-form button {
+            padding: 0.6rem 1.1rem;
+            background: var(--accent); color: var(--bg);
+            font-family: inherit; font-weight: 600; font-size: 0.85rem;
+            border: none; border-radius: 8px; cursor: pointer;
+            white-space: nowrap;
+            transition: transform 0.15s, filter 0.15s;
+        }
+        .signup-form button:hover { transform: scale(1.02); filter: brightness(1.1); }
+
+        .signup-success {
+            display: none; color: var(--cyan);
+            font-weight: 500; padding: 0.6rem; font-size: 0.9rem;
+        }
+
+        .hero-sub {
+            font-size: 0.75rem; color: var(--text-dim);
+            margin-top: 0.75rem;
+        }
+        .hero-sub span { color: var(--accent); }
+
+        /* ── Solution demo inside hero ── */
+        .hero-demo {
+            position: relative; z-index: 2;
+            max-width: 640px; width: 100%;
+            margin: 2.5rem auto 0;
+            text-align: center;
+        }
+        .hero-demo h2 {
+            font-size: 0.75rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--text-dim); margin-bottom: 1rem;
+        }
+        .demo-window {
+            background: var(--bg-raised);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .demo-titlebar {
+            display: flex; align-items: center; gap: 6px;
+            padding: 0.6rem 0.85rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--border);
+        }
+        .demo-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+        }
+        .demo-dot-r { background: #ef4444; }
+        .demo-dot-y { background: #eab308; }
+        .demo-dot-g { background: #22c55e; }
+        .demo-titlebar span {
+            flex: 1; text-align: center;
+            font-size: 0.7rem; color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .demo-body {
+            display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; gap: 0;
+            min-height: 160px;
+        }
+        .demo-code {
+            padding: 1rem 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem; line-height: 1.55;
+            color: var(--text-muted);
+            text-align: left; white-space: pre;
+        }
+        .demo-code .kw { color: var(--cyan); }
+        .demo-code .str { color: var(--accent); }
+        .demo-divider {
+            width: 1px; height: 100%;
+            background: var(--border);
+            position: relative;
+        }
+        .demo-divider::after {
+            content: '\2192';
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-raised);
+            color: var(--text-dim); font-size: 0.8rem;
+            padding: 0.25rem;
+        }
+        .demo-chart {
+            padding: 1rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .demo-chart svg text { font-family: 'Inter', sans-serif; }
+
+        /* ═══════ SECTIONS ═══════ */
+        .section { padding: 5rem 0; position: relative; }
+        .section-dark { background: var(--bg); }
+        .section-raised {
+            background: var(--bg-raised);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .section-label {
+            font-size: 0.72rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--accent); margin-bottom: 0.5rem;
+        }
+        .section-title {
+            font-size: 2rem; font-weight: 700;
+            letter-spacing: -0.02em; margin-bottom: 0.6rem;
+            color: var(--text);
+        }
+        .section-subtitle {
+            font-size: 1rem; color: var(--text-muted);
+            max-width: 520px; margin: 0 auto; line-height: 1.6;
+        }
+
+        /* ═══════ PROBLEM ═══════ */
+        .problem-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 2rem; align-items: center;
+        }
+        .problem-text p {
+            font-size: 0.95rem; line-height: 1.7;
+            color: var(--text-muted); margin-bottom: 0.85rem;
+        }
+        .problem-text strong { color: var(--text); font-weight: 600; }
+        .problem-visual {
+            display: flex; justify-content: center; align-items: center;
+        }
+        .problem-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem; color: var(--text-dim);
+            line-height: 1.6;
+            position: relative;
+        }
+        .problem-card::before {
+            content: 'old-workflow.sh';
+            display: block; font-size: 0.65rem;
+            color: var(--text-dim); margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            opacity: 0.6;
+        }
+        .problem-card .strike {
+            text-decoration: line-through; opacity: 0.4;
+        }
+        .problem-card .err { color: #ef4444; }
+
+        /* ═══════ FEATURES BENTO ═══════ */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        .bento-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.75rem 1.5rem;
+            transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+        }
+        .bento-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .bento-icon {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; margin-bottom: 1rem;
+            background: var(--accent-dim);
+            border: 1px solid rgba(201,168,76,0.12);
+        }
+        .bento-icon svg { width: 18px; height: 18px; }
+        .bento-card h3 {
+            font-size: 0.95rem; font-weight: 600;
+            margin-bottom: 0.4rem; color: var(--text);
+        }
+        .bento-card p {
+            font-size: 0.85rem; color: var(--text-muted);
+            line-height: 1.55;
+        }
+
+        /* ═══════ PRICING ═══════ */
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1rem; align-items: start;
+        }
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1.5rem;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .pricing-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+        .pricing-card.featured {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent-dim), 0 8px 32px rgba(201,168,76,0.08);
+            position: relative;
+        }
+        .pricing-badge {
+            display: inline-block;
+            font-size: 0.65rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            background: var(--accent); color: var(--bg);
+            padding: 0.2rem 0.55rem; border-radius: 4px;
+            margin-bottom: 0.75rem;
+        }
+        .pricing-plan {
+            font-size: 1.1rem; font-weight: 600;
+            color: var(--text); margin-bottom: 0.25rem;
+        }
+        .pricing-price {
+            font-size: 2.25rem; font-weight: 700;
+            color: var(--text); margin-bottom: 0.15rem;
+            letter-spacing: -0.02em;
+        }
+        .pricing-period {
+            font-size: 0.78rem; color: var(--text-dim);
+            margin-bottom: 1.25rem;
+        }
+        .pricing-features { list-style: none; margin-bottom: 1.5rem; }
+        .pricing-features li {
+            padding: 0.3rem 0; font-size: 0.84rem;
+            color: var(--text-muted);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .pricing-features li::before {
+            content: '';
+            width: 16px; height: 16px; flex-shrink: 0;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23c9a84c'%3E%3Cpath d='M6.5 11.5L3 8l1-1 2.5 2.5L12 4l1 1z'/%3E%3C/svg%3E") center/contain no-repeat;
+        }
+
+        .btn-primary {
+            display: inline-block; width: 100%; text-align: center;
+            padding: 0.6rem 1rem;
+            background: var(--accent); color: var(--bg);
+            font-family: inherit; font-weight: 600; font-size: 0.85rem;
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: transform 0.15s, filter 0.15s;
+        }
+        .btn-primary:hover { transform: scale(1.02); filter: brightness(1.1); color: var(--bg); }
+
+        .btn-secondary {
+            display: inline-block; width: 100%; text-align: center;
+            padding: 0.6rem 1rem;
+            background: transparent; color: var(--text-muted);
+            font-family: inherit; font-weight: 600; font-size: 0.85rem;
+            border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, transform 0.15s;
+        }
+        .btn-secondary:hover {
+            border-color: var(--border-hover); color: var(--text);
+            transform: scale(1.02);
+        }
+
+        /* ═══════ CTA ═══════ */
+        .cta-section { text-align: center; }
+        .cta-section .signup-form {
+            max-width: 400px; margin: 1.5rem auto 0;
+        }
+        .cta-section .signup-success { color: var(--cyan); }
+
+        /* ═══════ FOOTER ═══════ */
+        footer {
+            padding: 2rem 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.78rem; color: var(--text-dim);
+        }
+        .footer-links {
+            display: flex; justify-content: center;
+            gap: 1.25rem; margin-bottom: 0.5rem;
+        }
+        .footer-links a { color: var(--text-dim); }
+        .footer-links a:hover { color: var(--text-muted); }
+
+        /* ═══════ RESPONSIVE ═══════ */
+        @media (max-width: 900px) {
+            .hero-content { flex-direction: column; gap: 1.5rem; }
+            .mermaid-left, .mermaid-right { margin: 0; width: 220px; }
+            .hero-center { order: -1; }
+            .bento-grid, .pricing-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px; margin-left: auto; margin-right: auto;
+            }
+            .problem-grid { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 2.1rem; }
+            .demo-body { grid-template-columns: 1fr; }
+            .demo-divider { width: 100%; height: 1px; }
+            .demo-divider::after {
+                content: '\2193';
+                transform: translate(-50%, -50%);
+            }
+            .nav-links { gap: 0.75rem; }
+            .nav-links a { font-size: 0.72rem; }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 1.75rem; }
+            .hero-center { padding: 1.5rem 1.25rem; }
+            .mermaid-left, .mermaid-right { width: 170px; }
+            .section { padding: 3.5rem 0; }
+            .section-title { font-size: 1.6rem; }
+            .signup-form { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════ NAV ═══════ -->
+<nav>
+    <div class="nav-logo">
+        <div class="logo-icon"></div>
+        Mermaid Maxxing
+    </div>
+    <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#waitlist" class="nav-cta">Join Waitlist</a></li>
+    </ul>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<section class="hero" id="hero">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+
+    <!-- Faint mermaid-style flowchart in background -->
+    <div class="hero-bg-chart" aria-hidden="true">
+        <svg viewBox="0 0 900 700" fill="none" stroke="#fff" stroke-width="1.5">
+            <!-- Top node -->
+            <rect x="370" y="30" width="160" height="50" rx="8"/>
+            <text x="450" y="62" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="14">User Input</text>
+            <line x1="450" y1="80" x2="450" y2="130"/>
+            <polygon points="445,126 450,136 455,126" fill="#fff" stroke="none"/>
+
+            <!-- Decision diamond -->
+            <polygon points="450,140 550,200 450,260 350,200"/>
+            <text x="450" y="206" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="13">Parse MD?</text>
+
+            <!-- Yes branch (left) -->
+            <line x1="350" y1="200" x2="200" y2="200"/>
+            <line x1="200" y1="200" x2="200" y2="290"/>
+            <polygon points="195,286 200,296 205,286" fill="#fff" stroke="none"/>
+            <text x="268" y="192" fill="#fff" stroke="none" font-family="Inter" font-size="11">Yes</text>
+            <rect x="120" y="300" width="160" height="50" rx="8"/>
+            <text x="200" y="332" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="13">Build AST</text>
+            <line x1="200" y1="350" x2="200" y2="410"/>
+            <polygon points="195,406 200,416 205,406" fill="#fff" stroke="none"/>
+            <rect x="120" y="420" width="160" height="50" rx="8"/>
+            <text x="200" y="452" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="13">Render Chart</text>
+            <line x1="200" y1="470" x2="200" y2="530"/>
+            <polygon points="195,526 200,536 205,526" fill="#fff" stroke="none"/>
+
+            <!-- Subgraph box -->
+            <rect x="100" y="540" width="200" height="70" rx="10" stroke-dasharray="6 4"/>
+            <text x="200" y="568" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="11">Live Preview</text>
+            <text x="200" y="588" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="10">auto-refresh</text>
+
+            <!-- No branch (right) -->
+            <line x1="550" y1="200" x2="700" y2="200"/>
+            <line x1="700" y1="200" x2="700" y2="290"/>
+            <polygon points="695,286 700,296 705,286" fill="#fff" stroke="none"/>
+            <text x="630" y="192" fill="#fff" stroke="none" font-family="Inter" font-size="11">No</text>
+            <rect x="620" y="300" width="160" height="50" rx="8"/>
+            <text x="700" y="332" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="13">Show Error</text>
+            <line x1="700" y1="350" x2="700" y2="410"/>
+            <polygon points="695,406 700,416 705,406" fill="#fff" stroke="none"/>
+
+            <!-- Retry diamond -->
+            <polygon points="700,420 770,465 700,510 630,465"/>
+            <text x="700" y="471" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="11">Retry?</text>
+
+            <!-- Retry yes - loops back up -->
+            <line x1="630" y1="465" x2="560" y2="465"/>
+            <line x1="560" y1="465" x2="560" y2="140"/>
+            <line x1="560" y1="140" x2="510" y2="140"/>
+            <polygon points="514,135 504,140 514,145" fill="#fff" stroke="none"/>
+            <text x="575" y="455" fill="#fff" stroke="none" font-family="Inter" font-size="10">Yes</text>
+
+            <!-- Retry no -->
+            <line x1="700" y1="510" x2="700" y2="560"/>
+            <polygon points="695,556 700,566 705,556" fill="#fff" stroke="none"/>
+            <text x="715" y="542" fill="#fff" stroke="none" font-family="Inter" font-size="10">No</text>
+            <rect x="630" y="570" width="140" height="44" rx="20"/>
+            <text x="700" y="598" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="12">End</text>
+
+            <!-- Connect render to output -->
+            <line x1="200" y1="610" x2="200" y2="650"/>
+            <polygon points="195,646 200,656 205,646" fill="#fff" stroke="none"/>
+            <rect x="130" y="656" width="140" height="44" rx="20"/>
+            <text x="200" y="684" text-anchor="middle" fill="#fff" stroke="none" font-family="Inter" font-size="12">Output</text>
+        </svg>
+    </div>
+
+    <div class="hero-content">
+        <div class="mermaid-img mermaid-left">
+            <img src="punk-memaid-1.jpg" alt="Punk mermaid with purple hair and trident in stormy seas" loading="eager">
+        </div>
+
+        <div class="hero-center">
+            <div class="badge"><span class="badge-dot"></span> Now accepting early access</div>
+            <h1>Mermaid Maxxing</h1>
+            <p class="tagline">Turn markdown into stunning Mermaid charts. Live editing, beautiful output, embeddable anywhere.</p>
+            <form class="signup-form" id="heroForm">
+                <input type="email" placeholder="you@company.com" required aria-label="Email address">
+                <button type="submit">Get Access</button>
+            </form>
+            <p class="signup-success" id="heroSuccess">You're on the list. We'll be in touch.</p>
+            <p class="hero-sub"><span>127</span> people on the waitlist</p>
+        </div>
+
+        <div class="mermaid-img mermaid-right">
+            <img src="punk-mermaid-2.jpg" alt="Punk mermaid with red hair and trident in stormy seas" loading="eager">
+        </div>
+    </div>
+
+    <!-- Demo window -->
+    <div class="hero-demo">
+        <h2>See it in action</h2>
+        <div class="demo-window">
+            <div class="demo-titlebar">
+                <div class="demo-dot demo-dot-r"></div>
+                <div class="demo-dot demo-dot-y"></div>
+                <div class="demo-dot demo-dot-g"></div>
+                <span>mermaid-maxxing</span>
+                <div style="width:30px"></div>
+            </div>
+            <div class="demo-body">
+                <div class="demo-code"><span class="kw">graph</span> <span class="str">TD</span>
+    A[<span class="str">Start</span>] --> B{<span class="str">Decision</span>}
+    B -->|<span class="str">Yes</span>| C[<span class="str">Action</span>]
+    B -->|<span class="str">No</span>| D[<span class="str">End</span>]</div>
+                <div class="demo-divider"></div>
+                <div class="demo-chart">
+                    <svg viewBox="0 0 180 150" width="170" height="140">
+                        <rect x="60" y="8" width="60" height="26" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+                        <text x="90" y="25" text-anchor="middle" fill="var(--text-muted)" font-size="10">Start</text>
+                        <line x1="90" y1="34" x2="90" y2="48" stroke="var(--text-dim)" stroke-width="1"/>
+                        <polygon points="87,46 90,52 93,46" fill="var(--text-dim)"/>
+                        <polygon points="90,52 128,74 90,96 52,74" fill="none" stroke="var(--cyan)" stroke-width="1.5"/>
+                        <text x="90" y="78" text-anchor="middle" fill="var(--text-muted)" font-size="9">Decision</text>
+                        <line x1="52" y1="74" x2="22" y2="74" stroke="var(--text-dim)" stroke-width="1"/>
+                        <line x1="22" y1="74" x2="22" y2="110" stroke="var(--text-dim)" stroke-width="1"/>
+                        <polygon points="19,108 22,114 25,108" fill="var(--text-dim)"/>
+                        <text x="32" y="69" fill="var(--text-dim)" font-size="8">No</text>
+                        <line x1="128" y1="74" x2="158" y2="74" stroke="var(--text-dim)" stroke-width="1"/>
+                        <line x1="158" y1="74" x2="158" y2="110" stroke="var(--text-dim)" stroke-width="1"/>
+                        <polygon points="155,108 158,114 161,108" fill="var(--text-dim)"/>
+                        <text x="146" y="69" fill="var(--text-dim)" font-size="8">Yes</text>
+                        <rect x="5" y="114" width="34" height="22" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+                        <text x="22" y="129" text-anchor="middle" fill="var(--text-muted)" font-size="9">End</text>
+                        <rect x="141" y="114" width="34" height="22" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+                        <text x="158" y="129" text-anchor="middle" fill="var(--text-muted)" font-size="9">Action</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ PROBLEM ═══════ -->
+<section class="section section-raised" id="problem">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">The Problem</p>
+            <h2 class="section-title">Charting shouldn't feel like drowning</h2>
+        </div>
+        <div class="problem-grid">
+            <div class="problem-text">
+                <p><strong>Tab switching.</strong> Write Mermaid syntax in your editor, paste into a preview tool, tweak, copy back. Repeat endlessly.</p>
+                <p><strong>Rigid styling.</strong> The default output looks like a 2006 intranet diagram. Good luck making it presentable.</p>
+                <p><strong>No embedding.</strong> Want to drop a live chart into your docs or site? You'll need workarounds on top of workarounds.</p>
+            </div>
+            <div class="problem-visual">
+                <div class="problem-card">
+                    <span class="strike">$ edit chart.md</span>
+                    <span class="strike">$ open preview-tool.com</span>
+                    <span class="strike">$ paste → tweak → copy</span>
+                    <span class="strike">$ paste back → broke again</span>
+                    <span class="err">ERROR: life is too short for this</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ FEATURES ═══════ -->
+<section class="section section-dark" id="features">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Features</p>
+            <h2 class="section-title">Everything you need, nothing you don't</h2>
+            <p class="section-subtitle">Three core features built for speed and clarity.</p>
+        </div>
+        <div class="bento-grid">
+            <div class="bento-card">
+                <div class="bento-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        <path d="m15 5 4 4"/>
+                    </svg>
+                </div>
+                <h3>Edit in Place</h3>
+                <p>Write markdown or use the visual editor. Your chart updates live as you type — zero context switching.</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                </div>
+                <h3>Beautiful Charts</h3>
+                <p>Customizable themes, colors, and layouts. Make diagrams that people actually want to look at.</p>
+            </div>
+            <div class="bento-card">
+                <div class="bento-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m16 18 6-6-6-6"/>
+                        <path d="m8 6-6 6 6 6"/>
+                        <path d="m10 3 4 18"/>
+                    </svg>
+                </div>
+                <h3>Embeddable</h3>
+                <p>Generate shareable links for any chart. Embed live diagrams in your docs, blogs, or personal sites.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ PRICING ═══════ -->
+<section class="section section-raised" id="pricing">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Pricing</p>
+            <h2 class="section-title">Simple, transparent pricing</h2>
+            <p class="section-subtitle">Start free. Upgrade when you're ready.</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <p class="pricing-plan">Free</p>
+                <div class="pricing-price">$0</div>
+                <p class="pricing-period">forever</p>
+                <ul class="pricing-features">
+                    <li>5 charts per month</li>
+                    <li>Live markdown editor</li>
+                    <li>Basic themes</li>
+                    <li>PNG export</li>
+                </ul>
+                <a href="#waitlist" class="btn-secondary">Get Started</a>
+            </div>
+            <div class="pricing-card featured">
+                <div class="pricing-badge">Popular</div>
+                <p class="pricing-plan">Pro</p>
+                <div class="pricing-price">$9</div>
+                <p class="pricing-period">per month</p>
+                <ul class="pricing-features">
+                    <li>Unlimited charts</li>
+                    <li>All themes &amp; customization</li>
+                    <li>SVG &amp; PNG export</li>
+                    <li>Embeddable links</li>
+                    <li>Priority support</li>
+                </ul>
+                <button class="btn-primary" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Join Waitlist</button>
+            </div>
+            <div class="pricing-card">
+                <p class="pricing-plan">Enterprise</p>
+                <div class="pricing-price">Custom</div>
+                <p class="pricing-period">contact us</p>
+                <ul class="pricing-features">
+                    <li>Everything in Pro</li>
+                    <li>Team collaboration</li>
+                    <li>SSO &amp; admin controls</li>
+                    <li>Custom integrations</li>
+                    <li>Dedicated support</li>
+                </ul>
+                <a href="#waitlist" class="btn-secondary">Contact Us</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ CTA ═══════ -->
+<section class="section section-dark cta-section" id="waitlist">
+    <div class="container">
+        <div class="section-header">
+            <p class="section-label">Early Access</p>
+            <h2 class="section-title">Ready to dive in?</h2>
+            <p class="section-subtitle">Join the waitlist and be among the first to chart a better course.</p>
+        </div>
+        <form class="signup-form" id="ctaForm">
+            <input type="email" placeholder="you@company.com" required aria-label="Email address">
+            <button type="submit">Get Access</button>
+        </form>
+        <p class="signup-success" id="ctaSuccess">You're on the list. We'll be in touch.</p>
+    </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer>
+    <div class="container">
+        <div class="footer-links">
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Twitter</a>
+        </div>
+        <p>&copy; 2026 Mermaid Maxxing</p>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('.signup-form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var successEl = form.nextElementSibling;
+            form.style.display = 'none';
+            successEl.style.display = 'block';
+        });
+    });
+</script>
+
+</body>
+</html>
