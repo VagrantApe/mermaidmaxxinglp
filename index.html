@@ -76,7 +76,10 @@
             border-radius: 6px; border: none; cursor: pointer;
             transition: transform 0.15s, filter 0.15s;
 
+
             &.btn {
+                display: inline-block;
+                text-align: center;
                 color: black;
             }
         }
@@ -505,6 +508,7 @@
         @media (max-width: 900px) {
             .hero-content { flex-direction: column; gap: 1.5rem; }
             .mermaid-left, .mermaid-right { margin: 0; width: 220px; }
+            .mermaid-left { order: -2; }
             .hero-center { order: -1; }
             .bento-grid, .pricing-grid {
                 grid-template-columns: 1fr;
